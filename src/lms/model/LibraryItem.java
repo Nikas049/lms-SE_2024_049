@@ -1,28 +1,24 @@
 package lms.model;
 
-import lms.contract.Loanable;
-
 /**
- * Abstract base class representing a circulating library asset.
- * Implements the Loanable contract and mandates abstract calculateLateFee pricing.
+ * Superclass for all circulating library items.
+ * Extracts common properties (id, title, isBorrowed) and defines default late fee calculation.
  */
-public abstract class LibraryItem implements Loanable {
+public class LibraryItem {
     protected String id;
     protected String title;
     protected boolean isBorrowed;
-    protected Member borrower;
 
     /**
-     * Constructs a LibraryItem base instance.
+     * Constructs a LibraryItem with validated fields.
      *
-     * @param id    unique item identifier
-     * @param title item title
+     * @param id    unique item identifier / code (non-blank)
+     * @param title the item title (non-blank)
      */
     public LibraryItem(String id, String title) {
         setId(id);
         setTitle(title);
         this.isBorrowed = false;
-        this.borrower = null;
     }
 
     public String getId() {
@@ -47,58 +43,31 @@ public abstract class LibraryItem implements Loanable {
         this.title = title.trim();
     }
 
-    @Override
     public boolean isBorrowed() {
         return isBorrowed;
     }
 
-    @Override
-    public Member getBorrower() {
-        return borrower;
-    }
-
-    @Override
-    public void loan(Member member) {
-        if (member == null) {
-            throw new IllegalArgumentException("Borrower cannot be null");
-        }
-        if (this.isBorrowed) {
-            throw new IllegalStateException("Item \"" + title + "\" is already on loan to " + (borrower != null ? borrower.getName() : "another member"));
-        }
-        if (!member.canBorrow()) {
-            throw new IllegalStateException("Member " + member.getName() + " has reached maximum borrow limit of " + member.getMaxBorrowLimit());
-        }
-
-        this.isBorrowed = true;
-        this.borrower = member;
-        member.incrementBorrowedCount();
-    }
-
-    @Override
-    public void returnItem() {
-        if (!this.isBorrowed) {
-            throw new IllegalStateException("Item \"" + title + "\" is not currently borrowed");
-        }
-        if (this.borrower != null) {
-            this.borrower.decrementBorrowedCount();
-            this.borrower = null;
-        }
-        this.isBorrowed = false;
+    public void setBorrowed(boolean borrowed) {
+        this.isBorrowed = borrowed;
     }
 
     /**
-     * Abstract contract forcing all concrete subclasses to define specific late fee pricing rules.
+     * Calculates late fees for an overdue item.
+     * Default rule for general library items: daysLate * 10.0
      *
      * @param daysLate number of overdue days
-     * @return fee amount
+     * @return calculated late fee in standard currency units
      */
-    public abstract double calculateLateFee(int daysLate);
+    public double calculateLateFee(int daysLate) {
+        if (daysLate <= 0) {
+            return 0.0;
+        }
+        return daysLate * 10.0;
+    }
 
     @Override
     public String toString() {
-        return String.format("[%s] ID: %s | Title: \"%s\" | Status: %s%s",
-                getClass().getSimpleName(), id, title,
-                (isBorrowed ? "Borrowed by " + (borrower != null ? borrower.getName() : "Unknown") : "Available"),
-                (this instanceof lms.contract.Reservable res && res.isReserved() ? " (Reserved by " + res.getReservedBy().getName() + ")" : ""));
+        return String.format("LibraryItem [ID: %s, Title: \"%s\", Status: %s]",
+                id, title, (isBorrowed ? "Borrowed" : "Available"));
     }
 }

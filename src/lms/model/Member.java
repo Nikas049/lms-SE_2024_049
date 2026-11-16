@@ -1,15 +1,22 @@
 package lms.model;
 
 /**
- * Base member entity implementing Comparable to enable natural activity-based sorting.
- * Orders members descending by borrowedCount (most active first).
+ * Base class representing a library member.
+ * Introduces maxBorrowLimit and borrowing capacity validation.
  */
-public class Member implements Comparable<Member> {
+public class Member {
     protected String memberId;
     protected String name;
     protected int borrowedCount;
     protected int maxBorrowLimit;
 
+    /**
+     * Constructs a Member instance with a customized borrow limit.
+     *
+     * @param memberId       unique member ID (non-blank)
+     * @param name           member name (non-blank)
+     * @param maxBorrowLimit maximum number of items allowed to borrow concurrently (> 0)
+     */
     public Member(String memberId, String name, int maxBorrowLimit) {
         setMemberId(memberId);
         setName(name);
@@ -17,6 +24,9 @@ public class Member implements Comparable<Member> {
         this.borrowedCount = 0;
     }
 
+    /**
+     * Default constructor for general members (defaults limit to 5).
+     */
     public Member(String memberId, String name) {
         this(memberId, name, 5);
     }
@@ -70,6 +80,9 @@ public class Member implements Comparable<Member> {
     }
 
     public void incrementBorrowedCount() {
+        if (!canBorrow()) {
+            throw new IllegalStateException("Member " + name + " has reached maximum borrow limit of " + maxBorrowLimit);
+        }
         this.borrowedCount++;
     }
 
@@ -79,28 +92,9 @@ public class Member implements Comparable<Member> {
         }
     }
 
-    /**
-     * Natural ordering for Member: sorts members by activity (borrowedCount descending).
-     * Breaks ties deterministically using memberId ascending.
-     *
-     * @param other the other Member to compare with
-     * @return negative if this member is more active, positive if less active, 0 if identical
-     */
-    @Override
-    public int compareTo(Member other) {
-        if (other == null) {
-            return -1;
-        }
-        int countDiff = Integer.compare(other.borrowedCount, this.borrowedCount); // Descending order
-        if (countDiff != 0) {
-            return countDiff;
-        }
-        return this.memberId.compareToIgnoreCase(other.memberId);
-    }
-
     @Override
     public String toString() {
-        return String.format("%s [ID: %s, Name: %s, Active Borrows: %d/%d]",
-                getClass().getSimpleName(), memberId, name, borrowedCount, maxBorrowLimit);
+        return String.format("Member [ID: %s, Name: %s, Borrowed: %d/%d]",
+                memberId, name, borrowedCount, maxBorrowLimit);
     }
 }
