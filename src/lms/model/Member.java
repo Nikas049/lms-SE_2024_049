@@ -1,34 +1,25 @@
 package lms.model;
 
 /**
- * Base class representing a library member.
- * Introduces maxBorrowLimit and borrowing capacity validation.
+ * Represents a registered library member.
+ * Demonstrates encapsulation with strict boundary validations.
  */
 public class Member {
-    protected String memberId;
-    protected String name;
-    protected int borrowedCount;
-    protected int maxBorrowLimit;
+    private String memberId;
+    private String name;
+    private int borrowedCount;
 
     /**
-     * Constructs a Member instance with a customized borrow limit.
+     * Constructs a Member instance.
+     * Constructor delegates initialization to validated setters.
      *
-     * @param memberId       unique member ID (non-blank)
-     * @param name           member name (non-blank)
-     * @param maxBorrowLimit maximum number of items allowed to borrow concurrently (> 0)
-     */
-    public Member(String memberId, String name, int maxBorrowLimit) {
-        setMemberId(memberId);
-        setName(name);
-        setMaxBorrowLimit(maxBorrowLimit);
-        this.borrowedCount = 0;
-    }
-
-    /**
-     * Default constructor for general members (defaults limit to 5).
+     * @param memberId unique member identifier (non-blank)
+     * @param name     full name of the member (non-blank)
      */
     public Member(String memberId, String name) {
-        this(memberId, name, 5);
+        setMemberId(memberId);
+        setName(name);
+        this.borrowedCount = 0;
     }
 
     public String getMemberId() {
@@ -64,25 +55,7 @@ public class Member {
         this.borrowedCount = borrowedCount;
     }
 
-    public int getMaxBorrowLimit() {
-        return maxBorrowLimit;
-    }
-
-    public void setMaxBorrowLimit(int maxBorrowLimit) {
-        if (maxBorrowLimit <= 0) {
-            throw new IllegalArgumentException("Max borrow limit must be greater than zero");
-        }
-        this.maxBorrowLimit = maxBorrowLimit;
-    }
-
-    public boolean canBorrow() {
-        return borrowedCount < maxBorrowLimit;
-    }
-
     public void incrementBorrowedCount() {
-        if (!canBorrow()) {
-            throw new IllegalStateException("Member " + name + " has reached maximum borrow limit of " + maxBorrowLimit);
-        }
         this.borrowedCount++;
     }
 
@@ -94,7 +67,7 @@ public class Member {
 
     @Override
     public String toString() {
-        return String.format("Member [ID: %s, Name: %s, Borrowed: %d/%d]",
-                memberId, name, borrowedCount, maxBorrowLimit);
+        return String.format("Member [ID: %s, Name: %s, Borrowed Count: %d]",
+                memberId, name, borrowedCount);
     }
 }
