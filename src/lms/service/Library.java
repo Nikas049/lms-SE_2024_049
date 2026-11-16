@@ -1,23 +1,20 @@
 package lms.service;
 
+import lms.contract.Loanable;
 import lms.contract.Reservable;
-import lms.exception.DataAccessException;
-import lms.exception.ItemNotAvailableException;
-import lms.exception.MemberNotFoundException;
 import lms.model.Book;
 import lms.model.DVD;
 import lms.model.LibraryItem;
 import lms.model.Magazine;
 import lms.model.Member;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Service orchestrating Library inventory, lending workflows, and custom exception routing.
- * Decouples business invariants from display presentation via structured exceptions.
+ * Service container coordinating LibraryItem assets, contracts (Loanable, Reservable),
+ * and Comparable member activity sorting.
  */
 public class Library {
     private final List<LibraryItem> items;
@@ -28,6 +25,7 @@ public class Library {
         this.members = new ArrayList<>();
     }
 
+    // Overloaded addItem methods demonstrating compile-time static binding
     public void addItem(LibraryItem item) {
         if (item == null) throw new IllegalArgumentException("Item cannot be null");
         items.add(item);
@@ -53,133 +51,128 @@ public class Library {
         members.add(member);
     }
 
-    /**
-     * Looks up an item by its ID.
-     * Throws checked ItemNotAvailableException if no matching item exists.
-     *
-     * @param id the item ID
-     * @return the LibraryItem instance
-     * @throws ItemNotAvailableException if item does not exist
-     */
-    public LibraryItem findItem(String id) throws ItemNotAvailableException {
-        if (id == null || id.isBlank()) {
-            throw new ItemNotAvailableException("Item ID cannot be null or blank.");
-        }
+    public LibraryItem findItemById(String id) {
+        if (id == null || id.isBlank()) return null;
         for (LibraryItem item : items) {
             if (item.getId().equalsIgnoreCase(id.trim())) {
                 return item;
             }
         }
-        throw new ItemNotAvailableException("Item with ID '" + id + "' does not exist in the library catalog.");
+        return null;
     }
 
-    /**
-     * Looks up a member by identifier.
-     * Throws unchecked MemberNotFoundException if not found, storing the offending memberId.
-     *
-     * @param memberId unique member ID
-     * @return registered Member
-     * @throws MemberNotFoundException if member is not registered
-     */
-    public Member findMember(String memberId) throws MemberNotFoundException {
-        if (memberId == null || memberId.isBlank()) {
-            throw new MemberNotFoundException(memberId, "Member ID cannot be null or blank.");
-        }
+    public Member findMemberById(String id) {
+        if (id == null || id.isBlank()) return null;
         for (Member member : members) {
-            if (member.getMemberId().equalsIgnoreCase(memberId.trim())) {
+            if (member.getMemberId().equalsIgnoreCase(id.trim())) {
                 return member;
             }
         }
-        throw new MemberNotFoundException(memberId, "Member with ID '" + memberId + "' was not found in registry.");
+        return null;
     }
 
-    /**
-     * Loans an item to a member using checked exception control flow.
-     *
-     * @param itemId   item identifier
-     * @param memberId member identifier
-     * @throws ItemNotAvailableException if item not found, already loaned, or limit exceeded
-     * @throws MemberNotFoundException   if member does not exist
-     */
-    public void loanItem(String itemId, String memberId) throws ItemNotAvailableException {
-        Member member = findMember(memberId); // May throw MemberNotFoundException (Unchecked)
-        LibraryItem item = findItem(itemId);  // May throw ItemNotAvailableException (Checked)
-        item.loan(member);                    // May throw ItemNotAvailableException (Checked)
-    }
-
-    /**
-     * Returns an item and clears state.
-     *
-     * @param itemId item identifier
-     * @throws ItemNotAvailableException if item not found or was not loaned out
-     */
-    public void returnItem(String itemId) throws ItemNotAvailableException {
-        LibraryItem item = findItem(itemId);  // May throw ItemNotAvailableException (Checked)
-        item.returnItem();                   // May throw ItemNotAvailableException (Checked)
-    }
-
-    /**
-     * Reserves an item for a member.
-     *
-     * @param itemId   item identifier
-     * @param memberId member identifier
-     * @throws ItemNotAvailableException if item does not exist or does not support reservations
-     */
-    public void reserveItem(String itemId, String memberId) throws ItemNotAvailableException {
-        Member member = findMember(memberId);
-        LibraryItem item = findItem(itemId);
-        if (item instanceof Reservable reservable) {
-            reservable.reserve(member);
-        } else {
-            throw new ItemNotAvailableException("Item \"" + item.getTitle() + "\" (" +
-                    item.getClass().getSimpleName() + ") does not support reservations.");
+    public boolean loanItem(String itemId, String memberId) {
+        LibraryItem item = findItemById(itemId);
+        if (item == null) {
+            System.out.println("[Loan Error] Item ID '" + itemId + "' not found.");
+            return false;
         }
-    }
-
-    /**
-     * Cancels a reservation hold.
-     *
-     * @param itemId item identifier
-     * @throws ItemNotAvailableException if item not found or not reservable
-     */
-    public void cancelReservation(String itemId) throws ItemNotAvailableException {
-        LibraryItem item = findItem(itemId);
-        if (item instanceof Reservable reservable) {
-            reservable.cancelReservation();
-        } else {
-            throw new ItemNotAvailableException("Item \"" + item.getTitle() + "\" is not a reservable asset.");
+        Member member = findMemberById(memberId);
+        if (member == null) {
+            System.out.println("[Loan Error] Member ID '" + memberId + "' not found.");
+            return false;
         }
-    }
 
-    /**
-     * Simulates underlying persistence layer failure, converting checked low-level exceptions
-     * into a structured unchecked DataAccessException.
-     *
-     * @throws DataAccessException always thrown to test fault tolerance
-     */
-    public void simulateDatabaseFailure() {
         try {
-            // Simulate SQL connection failure
-            throw new SQLException("SQLState 08001: Connection refused at host: 192.168.1.50:3306 (DB_TIMEOUT)");
-        } catch (SQLException ex) {
-            throw new DataAccessException("Data layer failure: Unable to commit transaction to primary catalog store.", ex);
+            item.loan(member); // Delegates directly to Loanable contract method
+            System.out.println("[Loan Success] Item \"" + item.getTitle() + "\" loaned to " + member.getName() + ".");
+            return true;
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            System.out.println("[Loan Denied] " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean returnItem(String itemId) {
+        LibraryItem item = findItemById(itemId);
+        if (item == null) {
+            System.out.println("[Return Error] Item ID '" + itemId + "' not found.");
+            return false;
+        }
+
+        try {
+            item.returnItem(); // Delegates directly to Loanable contract method
+            System.out.println("[Return Success] Item \"" + item.getTitle() + "\" returned successfully.");
+            return true;
+        } catch (IllegalStateException e) {
+            System.out.println("[Return Denied] " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean reserveItem(String itemId, String memberId) {
+        LibraryItem item = findItemById(itemId);
+        if (item == null) {
+            System.out.println("[Reservation Error] Item ID '" + itemId + "' not found.");
+            return false;
+        }
+        Member member = findMemberById(memberId);
+        if (member == null) {
+            System.out.println("[Reservation Error] Member ID '" + memberId + "' not found.");
+            return false;
+        }
+
+        if (item instanceof Reservable reservableItem) {
+            try {
+                reservableItem.reserve(member);
+                System.out.println("[Reservation Success] Item \"" + item.getTitle() + "\" reserved for " + member.getName() + ".");
+                return true;
+            } catch (IllegalStateException e) {
+                System.out.println("[Reservation Denied] " + e.getMessage());
+                return false;
+            }
+        } else {
+            System.out.println("[Reservation Unsupported] Item \"" + item.getTitle() + "\" (" + item.getClass().getSimpleName() + ") does not support reservations.");
+            return false;
+        }
+    }
+
+    public boolean cancelReservation(String itemId) {
+        LibraryItem item = findItemById(itemId);
+        if (item == null) {
+            System.out.println("[Cancel Error] Item ID '" + itemId + "' not found.");
+            return false;
+        }
+
+        if (item instanceof Reservable reservableItem) {
+            try {
+                reservableItem.cancelReservation();
+                System.out.println("[Cancel Success] Reservation cancelled for \"" + item.getTitle() + "\".");
+                return true;
+            } catch (IllegalStateException e) {
+                System.out.println("[Cancel Denied] " + e.getMessage());
+                return false;
+            }
+        } else {
+            System.out.println("[Cancel Unsupported] Item \"" + item.getTitle() + "\" is not a reservable asset.");
+            return false;
         }
     }
 
     /**
-     * Ranks members by activity (borrowedCount descending).
-     * Sorts defensive copy to avoid altering repository state.
+     * Ranks members by borrowing activity (most active first).
+     * IMPORTANT: Sorts a defensive copy to prevent unintended mutation of internal lists.
      *
-     * @return sorted list of members
+     * @return new sorted List of members
      */
     public List<Member> getMembersSortedByActivity() {
         List<Member> defensiveCopy = new ArrayList<>(this.members);
-        Collections.sort(defensiveCopy);
+        Collections.sort(defensiveCopy); // Invokes Member.compareTo
         return defensiveCopy;
     }
 
     public void printAllLateFees(int daysLate) {
-        System.out.println("\n--- Late Fee Breakdown for " + daysLate + " Overdue Days ---");
+        System.out.println("\n--- Late Fee Evaluation for " + daysLate + " Overdue Days (Dynamic Binding) ---");
         for (LibraryItem item : items) {
             double fee = item.calculateLateFee(daysLate);
             System.out.printf("  [%-4s] %-25s (%-8s) -> Fee: Rs. %-7.2f%n",

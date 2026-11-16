@@ -1,166 +1,106 @@
 package lms;
 
-import lms.exception.DataAccessException;
-import lms.exception.ItemNotAvailableException;
-import lms.exception.MemberNotFoundException;
 import lms.model.Book;
 import lms.model.DVD;
 import lms.model.Magazine;
+import lms.model.Member;
 import lms.model.Staff;
 import lms.model.Student;
 import lms.service.Library;
 
+import java.util.List;
+
 /**
- * Robust Test Driver for Week 5: Custom Exception Subsystem.
- * Features an attempt() helper using try-catch-finally blocks to test 8 distinct operational scenarios.
+ * Test Driver for Week 4: Abstract Classes, Interfaces, and Comparable Sorting.
+ * Demonstrates Loanable/Reservable contracts, abstract calculateLateFee polymorphism,
+ * Magazine items, and defensive collection sorting.
  */
 public class Main {
-
-    @FunctionalInterface
-    interface TestAction {
-        void execute() throws Exception;
-    }
-
-    /**
-     * Executes a scenario inside a structured try-catch-finally block.
-     * Guarantees diagnostics and cleanup logging regardless of outcome.
-     *
-     * @param scenarioName description of the operational test
-     * @param action       executable block of library operations
-     */
-    public static void attempt(String scenarioName, TestAction action) {
-        System.out.println("\n================================================================================");
-        System.out.println(" SCENARIO: " + scenarioName);
-        System.out.println("================================================================================");
-        boolean outcome = false;
-        try {
-            action.execute();
-            outcome = true;
-            System.out.println("[RESULT: SUCCESS] Operation completed within business invariants.");
-        } catch (ItemNotAvailableException ex) {
-            System.out.println("[CAUGHT CHECKED EXCEPTION -> ItemNotAvailableException]");
-            System.out.println("  Detail: " + ex.getMessage());
-        } catch (MemberNotFoundException ex) {
-            System.out.println("[CAUGHT UNCHECKED EXCEPTION -> MemberNotFoundException]");
-            System.out.println("  Detail: " + ex.getMessage());
-            System.out.println("  Offending Member ID Encapsulated: " + ex.getOffendingMemberId());
-        } catch (DataAccessException ex) {
-            System.out.println("[CAUGHT UNCHECKED EXCEPTION -> DataAccessException]");
-            System.out.println("  Detail: " + ex.getMessage());
-            System.out.println("  Root Cause: " + ex.getCause().toString());
-        } catch (Exception ex) {
-            System.out.println("[CAUGHT UNEXPECTED EXCEPTION -> " + ex.getClass().getSimpleName() + "]: " + ex.getMessage());
-        } finally {
-            System.out.println("[FINALLY BLOCK] Cleanup complete for scenario: \"" + scenarioName + "\" (Outcome: " + (outcome ? "SUCCESS" : "EXCEPTION HANDLED") + ")");
-        }
-    }
-
     public static void main(String[] args) {
-        System.out.println("################################################################################");
-        System.out.println("  SENG 12233: Library Management System (Week 5 - Exception Handling Subsystem)");
-        System.out.println("################################################################################");
+        System.out.println("================================================================================");
+        System.out.println(" SENG 12233: Library Management System (Week 4 - Abstraction & Interfaces)");
+        System.out.println("================================================================================");
 
         Library library = new Library();
 
-        // Setup Catalog & Members
-        Book b1 = new Book("B101", "Clean Architecture", "Robert C. Martin");
-        Book b2 = new Book("B102", "Effective Java", "Joshua Bloch");
-        DVD d1 = new DVD("D201", "The Social Network", 120);
-        DVD d2 = new DVD("D202", "Silicon Valley Doc", 90);
-        Magazine m1 = new Magazine("M301", "Communications of the ACM", 11);
+        // 1. Instantiating concrete items under Abstract LibraryItem
+        System.out.println("\n[1] Registering Heterogeneous Library Items...");
+        Book book = new Book("B100", "Domain-Driven Design", "Eric Evans");
+        DVD dvd = new DVD("D200", "Interstellar", 169);
+        Magazine magazine = new Magazine("M300", "IEEE Software Nov/Dec", 42);
 
-        library.addItem(b1);
-        library.addItem(b2);
-        library.addItem(d1);
-        library.addItem(d2);
-        library.addItem(m1);
+        library.addItem(book);
+        library.addItem(dvd);
+        library.addItem(magazine);
 
-        Student student = new Student("S100", "Anura Bandara");
-        Staff staff = new Staff("E500", "Dr. Chandana Gamage");
+        // 2. Registering Members
+        System.out.println("\n[2] Registering University Members...");
+        Student s1 = new Student("S001", "Kamal Wickramasinghe");
+        Student s2 = new Student("S002", "Dulani Fernando");
+        Staff st1 = new Staff("E001", "Prof. K. L. Silva");
 
-        library.addMember(student);
-        library.addMember(staff);
+        library.addMember(s1);
+        library.addMember(s2);
+        library.addMember(st1);
 
         library.displayCatalog();
-        library.displayMembers();
 
-        // =========================================================================
-        // 8 Distinct Operational Scenarios
-        // =========================================================================
+        // 3. Demonstrating Loanable Contract & Business Rules
+        System.out.println("\n[3] Testing Loanable Contract Workflows...");
+        library.loanItem("B100", "S001");
+        library.loanItem("D200", "S001");
+        library.loanItem("M300", "E001");
 
-        // Scenario 1: Successful Item Loan
-        attempt("1. Successful Loan of a Book by a Student", () -> {
-            library.loanItem("B101", "S100");
-            System.out.println("State verified: " + b1.getTitle() + " -> Borrowed by: " + b1.getBorrower().getName());
-            System.out.println("Student borrow count: " + student.getBorrowedCount() + "/" + student.getMaxBorrowLimit());
-        });
+        // Attempting to loan an item that is already borrowed
+        System.out.println("\nAttempting loan of already-borrowed item:");
+        library.loanItem("B100", "S002");
 
-        // Scenario 2: Borrow Limit Enforcement (Student limit = 3)
-        attempt("2. Invariant Enforcement: Student Attempts to Exceed Borrow Limit (3)", () -> {
-            // Student currently has 1 item. Borrow 2 more to hit max limit (3/3).
-            library.loanItem("B102", "S100");
-            library.loanItem("D201", "S100");
-            System.out.println("Student current borrow count: " + student.getBorrowedCount() + "/" + student.getMaxBorrowLimit());
+        // 4. Demonstrating Reservable Contract
+        System.out.println("\n[4] Testing Reservable Contract Workflows...");
+        // Book is Reservable
+        System.out.println("Reserving Book (Reservable):");
+        library.reserveItem("B100", "S002");
 
-            // Attempt 4th borrow (should trigger checked ItemNotAvailableException)
-            System.out.println("Attempting 4th borrow for Student S100:");
-            library.loanItem("D202", "S100");
-        });
+        // DVD is Non-Reservable
+        System.out.println("\nAttempting reservation on DVD (Non-Reservable):");
+        library.reserveItem("D200", "S002");
 
-        // Scenario 3: Attempting to Borrow an Already Loaned Item
-        attempt("3. Concurrency / Availability Conflict: Item Already On Loan", () -> {
-            System.out.println("Staff E500 attempts to borrow \"Clean Architecture\" (B101) which is already on loan:");
-            library.loanItem("B101", "E500");
-        });
+        // Magazine is Non-Reservable
+        System.out.println("\nAttempting reservation on Magazine (Non-Reservable):");
+        library.reserveItem("M300", "S002");
 
-        // Scenario 4: Missing Member Lookup (MemberNotFoundException)
-        attempt("4. Missing Member Lookup: Unregistered Member ID", () -> {
-            System.out.println("Attempting loan for non-existent member 'X999':");
-            library.loanItem("D202", "X999");
-        });
+        // Cancelling Book reservation
+        System.out.println("\nCancelling reservation on Book:");
+        library.cancelReservation("B100");
 
-        // Scenario 5: Successful Item Return & State Verification
-        attempt("5. Successful Item Return & Ownership Release", () -> {
-            System.out.println("Returning \"Clean Architecture\" (B101)...");
-            library.returnItem("B101");
-            System.out.println("State verified: " + b1.getTitle() + " isBorrowed=" + b1.isBorrowed() + ", borrower=" + b1.getBorrower());
-            System.out.println("Student S100 borrow count after return: " + student.getBorrowedCount() + "/" + student.getMaxBorrowLimit());
-        });
+        // 5. Demonstrating Abstract Method calculateLateFee Polymorphism
+        System.out.println("\n[5] Calculating Overdue Late Fees (Dynamic Dispatch via Abstract Method)...");
+        library.printAllLateFees(5);
 
-        // Scenario 6: Return Invariant Violation (Returning an unborrowed item)
-        attempt("6. Return Invariant Violation: Returning an Unborrowed Item", () -> {
-            System.out.println("Attempting to return B101 again (currently not borrowed):");
-            library.returnItem("B101");
-        });
+        // 6. Demonstrating Comparable Sorting by Member Activity
+        System.out.println("\n[6] Activity Ranking with Comparable<Member> (Defensive Copy)...");
+        System.out.println("Original Member Registration Order in Repository:");
+        for (Member m : library.getMembers()) {
+            System.out.println("  " + m);
+        }
 
-        // Scenario 7: Data Layer Fault Wrapping (DataAccessException)
-        attempt("7. Persistence Layer Fault Handling: DataAccessException", () -> {
-            System.out.println("Triggering simulated low-level SQL database outage:");
-            library.simulateDatabaseFailure();
-        });
+        List<Member> rankedMembers = library.getMembersSortedByActivity();
+        System.out.println("\nRanked Members by Activity (Highest active borrows first):");
+        int rank = 1;
+        for (Member m : rankedMembers) {
+            System.out.printf("  #%d: %-25s | Borrows: %d%n", rank++, m.getName(), m.getBorrowedCount());
+        }
 
-        // Scenario 8: Reservation Lifecycle & Polymorphic Late Fee Calculation
-        attempt("8. Reservation Lifecycle & Polymorphic Late Fee Calculation", () -> {
-            // Test reserving reservable book
-            System.out.println("Reserving Book B101 for Staff E500:");
-            library.reserveItem("B101", "E500");
-            System.out.println("Cancelling reservation on B101:");
-            library.cancelReservation("B101");
+        // Verify repository immutability
+        System.out.println("\nVerifying Repository Internal Structure remains intact:");
+        boolean orderPreserved = library.getMembers().get(0).getMemberId().equals("S001");
+        System.out.println("Internal repository order intact: " + orderPreserved);
 
-            // Test non-reservable item reservation (DVD)
-            System.out.println("\nAttempting reservation on non-reservable DVD D201:");
-            try {
-                library.reserveItem("D201", "E500");
-            } catch (ItemNotAvailableException e) {
-                System.out.println("Caught expected non-reservable restriction: " + e.getMessage());
-            }
+        // 7. Testing Item Return
+        System.out.println("\n[7] Returning Loaned Items...");
+        library.returnItem("B100");
+        library.displayCatalog();
 
-            // Polymorphic late fee calculation
-            library.printAllLateFees(7);
-        });
-
-        System.out.println("\n################################################################################");
-        System.out.println("  All 8 Operational Scenarios and Exception Handlers Verified Successfully!");
-        System.out.println("################################################################################");
+        System.out.println("\n>>> Week 4 Abstraction & Interfaces test completed successfully! <<<");
     }
 }
