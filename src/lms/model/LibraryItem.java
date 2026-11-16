@@ -1,10 +1,11 @@
 package lms.model;
 
 import lms.contract.Loanable;
+import lms.exception.ItemNotAvailableException;
 
 /**
  * Abstract base class representing a circulating library asset.
- * Implements the Loanable contract and mandates abstract calculateLateFee pricing.
+ * Implements the Loanable contract with robust invariant validation and checked exceptions.
  */
 public abstract class LibraryItem implements Loanable {
     protected String id;
@@ -57,40 +58,61 @@ public abstract class LibraryItem implements Loanable {
         return borrower;
     }
 
+    /**
+     * Loans the item to a member.
+     * Throws checked ItemNotAvailableException if item is already borrowed or member cannot borrow.
+     *
+     * @param member the borrower
+     * @throws ItemNotAvailableException if item is unavailable or member limit exceeded
+     */
     @Override
-    public void loan(Member member) {
+    public void loan(Member member) throws ItemNotAvailableException {
         if (member == null) {
             throw new IllegalArgumentException("Borrower cannot be null");
         }
         if (this.isBorrowed) {
-            throw new IllegalStateException("Item \"" + title + "\" is already on loan to " + (borrower != null ? borrower.getName() : "another member"));
+            throw new ItemNotAvailableException(String.format(
+                    "Item \"%s\" (ID: %s) is currently unavailable -- already loaned to %s.",
+                    title, id, (borrower != null ? borrower.getName() : "another member")));
         }
         if (!member.canBorrow()) {
-            throw new IllegalStateException("Member " + member.getName() + " has reached maximum borrow limit of " + member.getMaxBorrowLimit());
+            throw new ItemNotAvailableException(String.format(
+                    "Cannot loan \"%s\": Member %s has reached the maximum borrowing limit of %d items.",
+                    title, member.getName(), member.getMaxBorrowLimit()));
         }
 
+        // State tracking updates
         this.isBorrowed = true;
         this.borrower = member;
         member.incrementBorrowedCount();
     }
 
+    /**
+     * Returns the item to library circulation.
+     * Clears borrower reference and safely decrements the member's borrow counter.
+     *
+     * @throws ItemNotAvailableException if the item was not checked out
+     */
     @Override
-    public void returnItem() {
+    public void returnItem() throws ItemNotAvailableException {
         if (!this.isBorrowed) {
-            throw new IllegalStateException("Item \"" + title + "\" is not currently borrowed");
+            throw new ItemNotAvailableException(String.format(
+                    "Invariant violation: Cannot return item \"%s\" (ID: %s) because it is not currently on loan.",
+                    title, id));
         }
+
         if (this.borrower != null) {
             this.borrower.decrementBorrowedCount();
-            this.borrower = null;
+            this.borrower = null; // Release ownership slot
         }
         this.isBorrowed = false;
     }
 
     /**
-     * Abstract contract forcing all concrete subclasses to define specific late fee pricing rules.
+     * Abstract pricing contract forcing concrete subclasses to supply pricing calculations.
      *
      * @param daysLate number of overdue days
-     * @return fee amount
+     * @return fee in currency units
      */
     public abstract double calculateLateFee(int daysLate);
 
