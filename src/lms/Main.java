@@ -1,91 +1,81 @@
 package lms;
 
 import lms.model.Book;
+import lms.model.DVD;
+import lms.model.LibraryItem;
 import lms.model.Member;
+import lms.model.Staff;
+import lms.model.Student;
 import lms.service.Library;
 
 /**
- * Test Driver for Week 2: Classes, Objects, and Encapsulation.
- * Validates encapsulation constraints, mock entity composition, and safe state transitions.
+ * Test Driver for Week 3: Inheritance & Polymorphism.
+ * Demonstrates class hierarchies, method overriding, dynamic vs static binding, and instanceof checking.
  */
 public class Main {
     public static void main(String[] args) {
         System.out.println("================================================================================");
-        System.out.println("     SENG 12233: Library Management System (Week 2 - Encapsulation)");
+        System.out.println(" SENG 12233: Library Management System (Week 3 - Inheritance & Polymorphism)");
         System.out.println("================================================================================");
 
         Library library = new Library();
 
-        // 1. Adding valid Books and Members
-        System.out.println("\n[1] Registering Valid Entities...");
-        Book book1 = new Book("Clean Code", "Robert C. Martin", "978-0132350884");
-        Book book2 = new Book("Effective Java", "Joshua Bloch", "978-0134685991");
-        Book book3 = new Book("Design Patterns", "Erich Gamma et al.", "978-0201633610");
+        // 1. Static Binding (Compile-Time Polymorphism / Method Overloading)
+        System.out.println("\n[1] Demonstrating Static Binding (Method Overloading via addItem)...");
+        Book book1 = new Book("B001", "Design Patterns", "Erich Gamma");
+        Book book2 = new Book("B002", "Refactoring", "Martin Fowler");
+        DVD dvd1 = new DVD("D001", "Inception", 148);
+        DVD dvd2 = new DVD("D002", "The Matrix", 136);
+        LibraryItem generalItem = new LibraryItem("G001", "Annual Research Report");
 
-        library.addBook(book1);
-        library.addBook(book2);
-        library.addBook(book3);
+        // Compiler resolves overloaded methods based on static reference types:
+        library.addItem(book1);       // Invokes addItem(Book)
+        library.addItem(dvd1);        // Invokes addItem(DVD)
+        library.addItem(generalItem); // Invokes addItem(LibraryItem)
 
-        Member mem1 = new Member("M001", "Kasun Perera");
-        Member mem2 = new Member("M002", "Nimasha Silva");
+        // Adding second items as base references
+        LibraryItem itemRefAsBook = book2;
+        library.addItem(itemRefAsBook); // Invokes addItem(LibraryItem) because static type is LibraryItem
+        library.addItem(dvd2);
 
-        library.addMember(mem1);
-        library.addMember(mem2);
+        // 2. Member Hierarchy & Specialized Limits
+        System.out.println("\n[2] Registering Specialized Members (Student vs Staff)...");
+        Student student = new Student("S101", "Amal Perera");
+        Staff staff = new Staff("E202", "Dr. Sanath Jayasuriya");
 
-        library.displayBooks();
+        library.addMember(student);
+        library.addMember(staff);
+
+        library.displayCatalog();
         library.displayMembers();
 
-        // 2. Demonstrating input validation and encapsulation enforcement
-        System.out.println("\n[2] Demonstrating Input Validation & Encapsulation Guards...");
+        // 3. Dynamic Binding (Runtime Polymorphism)
+        System.out.println("\n[3] Demonstrating Dynamic Binding (Runtime Late Fee Calculation)...");
+        // Book: 10/day, DVD: 25/day, General: 10/day
+        library.printAllLateFees(4);
 
-        // Test blank book title
-        try {
-            System.out.print("Testing blank Book title: ");
-            new Book("   ", "Valid Author", "978-0000000000");
-        } catch (IllegalArgumentException e) {
-            System.out.println("CAUGHT EXPECTED EXCEPTION -> " + e.getMessage());
-        }
+        // 4. Type Checking with instanceof Pattern Matching
+        System.out.println("\n[4] Demonstrating Type Checking (instanceof Pattern Matching)...");
+        System.out.println("Attempting streaming for book1:");
+        library.streamIfPossible(book1);
+        System.out.println("\nAttempting streaming for dvd1:");
+        library.streamIfPossible(dvd1);
 
-        // Test null book author
-        try {
-            System.out.print("Testing null Book author: ");
-            new Book("Valid Title", null, "978-0000000000");
-        } catch (IllegalArgumentException e) {
-            System.out.println("CAUGHT EXPECTED EXCEPTION -> " + e.getMessage());
-        }
+        // 5. Testing Borrow Limit Enforcement
+        System.out.println("\n[5] Testing Borrow Limit Constraints (Student limit = 3)...");
+        library.borrowItem("B001", "S101");
+        library.borrowItem("B002", "S101");
+        library.borrowItem("D001", "S101");
 
-        // Test blank member ID
-        try {
-            System.out.print("Testing blank Member ID: ");
-            new Member("", "Valid Name");
-        } catch (IllegalArgumentException e) {
-            System.out.println("CAUGHT EXPECTED EXCEPTION -> " + e.getMessage());
-        }
+        // Attempt 4th borrow for Student (should be rejected)
+        System.out.println("\nAttempting 4th borrow for Student (exceeding limit of 3):");
+        library.borrowItem("D002", "S101");
 
-        // Test negative borrowed count
-        try {
-            System.out.print("Testing negative Member borrowed count: ");
-            mem1.setBorrowedCount(-5);
-        } catch (IllegalArgumentException e) {
-            System.out.println("CAUGHT EXPECTED EXCEPTION -> " + e.getMessage());
-        }
+        System.out.println("\nStaff borrowing 4th item (Staff limit = 10):");
+        library.borrowItem("D002", "E202");
 
-        // 3. Testing Borrow and Return operations
-        System.out.println("\n[3] Testing Lending Workflows & State Updates...");
-        library.borrowBook("978-0132350884", "M001");
-        // Attempt duplicate borrow
-        library.borrowBook("978-0132350884", "M002");
-
-        library.displayBooks();
         library.displayMembers();
 
-        // Return book
-        System.out.println("\n[4] Testing Item Return...");
-        library.returnBook("978-0132350884", "M001");
-
-        library.displayBooks();
-        library.displayMembers();
-
-        System.out.println("\n>>> Week 2 Encapsulation test completed successfully! <<<");
+        System.out.println("\n>>> Week 3 Inheritance & Polymorphism tests passed successfully! <<<");
     }
 }
