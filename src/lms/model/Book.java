@@ -1,39 +1,22 @@
 package lms.model;
 
 /**
- * Represents a Book in the Library Management System.
- * Demonstrates encapsulation with private fields and validated setters.
+ * Represents a Book, extending the general LibraryItem superclass.
+ * Inherits id, title, and isBorrowed, and introduces author.
  */
-public class Book {
-    private String title;
+public class Book extends LibraryItem {
     private String author;
-    private String isbn;
-    private boolean isBorrowed;
 
     /**
-     * Constructs a new Book instance.
-     * Constructor delegates initialization directly to validated setters.
+     * Constructs a Book entity.
      *
+     * @param id     unique item ID / ISBN (non-blank)
      * @param title  the book title (non-blank)
      * @param author the author name (non-blank)
-     * @param isbn   the ISBN code (non-blank)
      */
-    public Book(String title, String author, String isbn) {
-        setTitle(title);
+    public Book(String id, String title, String author) {
+        super(id, title);
         setAuthor(author);
-        setIsbn(isbn);
-        this.isBorrowed = false;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        if (title == null || title.isBlank()) {
-            throw new IllegalArgumentException("Title cannot be blank");
-        }
-        this.title = title.trim();
     }
 
     public String getAuthor() {
@@ -47,28 +30,11 @@ public class Book {
         this.author = author.trim();
     }
 
-    public String getIsbn() {
-        return isbn;
-    }
-
-    public void setIsbn(String isbn) {
-        if (isbn == null || isbn.isBlank()) {
-            throw new IllegalArgumentException("ISBN cannot be blank");
-        }
-        this.isbn = isbn.trim();
-    }
-
-    public boolean isBorrowed() {
-        return isBorrowed;
-    }
-
-    public void setBorrowed(boolean borrowed) {
-        this.isBorrowed = borrowed;
-    }
+    // Book inherits the default calculateLateFee: daysLate * 10.0
 
     @Override
     public String toString() {
-        return String.format("Book [ISBN: %s, Title: \"%s\", Author: %s, Status: %s]",
-                isbn, title, author, (isBorrowed ? "Borrowed" : "Available"));
+        return String.format("Book [ID/ISBN: %s, Title: \"%s\", Author: %s, Status: %s]",
+                id, title, author, (isBorrowed ? "Borrowed" : "Available"));
     }
 }
